@@ -14,6 +14,7 @@ import (
 
 type Server struct {
 	uS      service.UserService
+	cS      service.CourtService
 	engine  *gin.Engine
 	portApp string
 }
@@ -21,6 +22,7 @@ type Server struct {
 func (s *Server) initiateRoute() {
 	routerGroup := s.engine.Group("/api/v1")
 	controller.NewUserController(s.uS, routerGroup).Route()
+	controller.NewCourtController(s.cS, routerGroup).Route()
 }
 
 func (s *Server) Start() {
@@ -40,11 +42,14 @@ func NewServer() *Server {
 
 	portApp := co.AppPort
 	userRepository := repository.NewUserRepository(db)
+	courtRepository := repository.NewCourtRepository(db)
 
 	userService := service.NewUserService(userRepository)
+	courtService := service.NewCourtService(courtRepository)
 
 	return &Server{
 		uS:      userService,
+		cS:      courtService,
 		engine:  gin.Default(),
 		portApp: portApp,
 	}
