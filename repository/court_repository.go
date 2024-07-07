@@ -23,7 +23,7 @@ type courtRepository struct {
 func (r *courtRepository) Create(payload model.Court) (model.Court, error) {
 	var court model.Court
 
-	err := r.DB.QueryRow("INSERT INTO courts (name, price) VALUES ($1, $2) RETURNING *", payload.Name, payload.Price).Scan(&court.Id, &court.Name, &court.Price, &court.CreatedAt, &court.UpdatedAt)
+	err := r.DB.QueryRow("INSERT INTO courts (name, price) VALUES ($1, $2) RETURNING id, name, price, created_at, updated_at", payload.Name, payload.Price).Scan(&court.Id, &court.Name, &court.Price, &court.CreatedAt, &court.UpdatedAt)
 
 	if err != nil {
 		return model.Court{}, err
@@ -77,7 +77,7 @@ func (r *courtRepository) FindById(id string) (model.Court, error) {
 func (r *courtRepository) Update(id string, payload model.Court) (model.Court, error) {
 	var court model.Court
 
-	err := r.DB.QueryRow("UPDATE courts SET name = $1, price = $2, updated_at = $3 WHERE id = $4 RETURNING *", payload.Name, payload.Price, time.Now(), id).Scan(&court.Id, &court.Name, &court.Price, &court.CreatedAt, &court.UpdatedAt)
+	err := r.DB.QueryRow("UPDATE courts SET name = $1, price = $2, updated_at = $3 WHERE id = $4 RETURNING id, name, price, created_at, updated_at", payload.Name, payload.Price, time.Now(), id).Scan(&court.Id, &court.Name, &court.Price, &court.CreatedAt, &court.UpdatedAt)
 	if err != nil {
 		return model.Court{}, err
 	}

@@ -5,6 +5,7 @@ import (
 	"math"
 	"team2/shuttleslot/model"
 	"team2/shuttleslot/model/dto"
+	"time"
 )
 
 type UserRepository interface {
@@ -25,7 +26,7 @@ type userRepository struct {
 func (r *userRepository) CreateCustomer(payload model.User) (model.User, error) {
 	var customer model.User
 
-	err := r.DB.QueryRow("INSERT INTO users (name, email, username, password, phone_number, role) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *", payload.Name, payload.Email, payload.Username, payload.Password, payload.PhoneNumber, payload.Role).Scan(&customer.Id, &customer.Name, &customer.PhoneNumber, &customer.Email, &customer.Username, &customer.Password, &customer.Point, &customer.Role, &customer.CreatedAt, &customer.UpdatedAt)
+	err := r.DB.QueryRow("INSERT INTO users (name, phone_number, email, username, password, role) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, name, phone_number, email, username, password, points, role, created_at, updated_at", payload.Name, payload.PhoneNumber, payload.Email, payload.Username, payload.Password, payload.Role).Scan(&customer.Id, &customer.Name, &customer.PhoneNumber, &customer.Email, &customer.Username, &customer.Password, &customer.Point, &customer.Role, &customer.CreatedAt, &customer.UpdatedAt)
 	if err != nil {
 		return model.User{}, err
 	}
@@ -36,7 +37,7 @@ func (r *userRepository) CreateCustomer(payload model.User) (model.User, error) 
 func (r *userRepository) CreateEmployee(payload model.User) (model.User, error) {
 	var employee model.User
 
-	err := r.DB.QueryRow("INSERT INTO users (name, email, username, password, phone_number, role) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *", payload.Name, payload.Email, payload.Username, payload.Password, payload.PhoneNumber, payload.Role).Scan(&employee.Id, &employee.Name, &employee.PhoneNumber, &employee.Email, &employee.Username, &employee.Password, &employee.Point, &employee.Role, &employee.CreatedAt, &employee.UpdatedAt)
+	err := r.DB.QueryRow("INSERT INTO users (name, phone_number, email, username, password, role) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, name, phone_number, email, username, password, points, role, created_at, updated_at", payload.Name, payload.PhoneNumber, payload.Email, payload.Username, payload.Password, payload.Role).Scan(&employee.Id, &employee.Name, &employee.PhoneNumber, &employee.Email, &employee.Username, &employee.Password, &employee.Point, &employee.Role, &employee.CreatedAt, &employee.UpdatedAt)
 	if err != nil {
 		return model.User{}, err
 	}
@@ -47,7 +48,7 @@ func (r *userRepository) CreateEmployee(payload model.User) (model.User, error) 
 func (r *userRepository) CreateAdmin(payload model.User) (model.User, error) {
 	var admin model.User
 
-	err := r.DB.QueryRow("INSERT INTO users (name, email, username, password, phone_number, role) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *", payload.Name, payload.Email, payload.Username, payload.Password, payload.PhoneNumber, payload.Role).Scan(&admin.Id, &admin.Name, &admin.PhoneNumber, &admin.Email, &admin.Username, &admin.Password, &admin.Point, &admin.Role, &admin.CreatedAt, &admin.UpdatedAt)
+	err := r.DB.QueryRow("INSERT INTO users (name, phone_number, email, username, password, role) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, name, phone_number, email, username, password, points, role, created_at, updated_at", payload.Name, payload.PhoneNumber, payload.Email, payload.Username, payload.Password, payload.Role).Scan(&admin.Id, &admin.Name, &admin.PhoneNumber, &admin.Email, &admin.Username, &admin.Password, &admin.Point, &admin.Role, &admin.CreatedAt, &admin.UpdatedAt)
 	if err != nil {
 		return model.User{}, err
 	}
@@ -58,7 +59,7 @@ func (r *userRepository) CreateAdmin(payload model.User) (model.User, error) {
 func (r *userRepository) FindUserByUsername(username string) (model.User, error) {
 	var user model.User
 
-	err := r.DB.QueryRow("SELECT id, name, phone_number, email, username, password, points, role FROM users WHERE username = $1", username).Scan(&user.Id, &user.Name, &user.PhoneNumber, &user.Email, &user.Username, &user.Password, &user.Point, &user.Role)
+	err := r.DB.QueryRow("SELECT id, name, phone_number, email, username, password, points, role, created_at, updated_at FROM users WHERE username = $1", username).Scan(&user.Id, &user.Name, &user.PhoneNumber, &user.Email, &user.Username, &user.Password, &user.Point, &user.Role, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		return model.User{}, err
 	}
@@ -69,7 +70,7 @@ func (r *userRepository) FindUserByUsername(username string) (model.User, error)
 func (r *userRepository) FindUserById(id string) (model.User, error) {
 	var user model.User
 
-	err := r.DB.QueryRow("SELECT id, name, phone_number, email, username, password, points, role FROM users WHERE id = $1", id).Scan(&user.Id, &user.Name, &user.PhoneNumber, &user.Email, &user.Username, &user.Password, &user.Point, &user.Role)
+	err := r.DB.QueryRow("SELECT id, name, phone_number, email, username, password, points, role, created_at, updated_at FROM users WHERE id = $1", id).Scan(&user.Id, &user.Name, &user.PhoneNumber, &user.Email, &user.Username, &user.Password, &user.Point, &user.Role, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		return model.User{}, err
 	}
@@ -83,7 +84,7 @@ func (r *userRepository) FindUserByRole(role string, page int, size int) ([]mode
 	// rumus pagination
 	offset := (page - 1) * size
 
-	rows, err := r.DB.Query("SELECT id, name, phone_number, email, username, password, points, role FROM users WHERE role = $1 LIMIT $2 OFFSET $3", role, size, offset)
+	rows, err := r.DB.Query("SELECT id, name, phone_number, email, username, password, points, role, created_at, updated_at FROM users WHERE role = $1 LIMIT $2 OFFSET $3", role, size, offset)
 	if err != nil {
 		return []model.User{}, dto.Paginate{}, err
 	}
@@ -91,7 +92,7 @@ func (r *userRepository) FindUserByRole(role string, page int, size int) ([]mode
 	totalRows := 0
 	for rows.Next() {
 		var u model.User
-		if err := rows.Scan(&u.Id, &u.Name, &u.PhoneNumber, &u.Email, &u.Username, &u.Password, &u.Point, &u.Role); err != nil {
+		if err := rows.Scan(&u.Id, &u.Name, &u.PhoneNumber, &u.Email, &u.Username, &u.Password, &u.Point, &u.Role, &u.CreatedAt, &u.UpdatedAt); err != nil {
 			return []model.User{}, dto.Paginate{}, err
 		}
 		users = append(users, u)
@@ -111,7 +112,7 @@ func (r *userRepository) FindUserByRole(role string, page int, size int) ([]mode
 func (r *userRepository) UpdateUser(id string, payload model.User) (model.User, error) {
 	var user model.User
 
-	err := r.DB.QueryRow("UPDATE users SET name = $1, phone_number = $2, email = $3, username = $4, password = $5 WHERE id = $6 RETURNING *", payload.Name, payload.PhoneNumber, payload.Email, payload.Username, payload.Password, id).Scan(&user.Id, &user.Name, &user.PhoneNumber, &user.Email, &user.Username, &user.Password, &user.Point, &user.Role, &user.CreatedAt, &user.UpdatedAt)
+	err := r.DB.QueryRow("UPDATE users SET name = $1, phone_number = $2, email = $3, username = $4, password = $5, updated_at = $6 WHERE id = $7 RETURNING id, name, phone_number, email, username, password, points, role, created_at, updated_at", payload.Name, payload.PhoneNumber, payload.Email, payload.Username, payload.Password, time.Now(), id).Scan(&user.Id, &user.Name, &user.PhoneNumber, &user.Email, &user.Username, &user.Password, &user.Point, &user.Role, &user.CreatedAt, &user.UpdatedAt)
 
 	if err != nil {
 		return model.User{}, err
