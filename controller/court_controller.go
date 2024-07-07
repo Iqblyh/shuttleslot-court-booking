@@ -3,6 +3,7 @@ package controller
 import (
 	"net/http"
 	"strconv"
+	"team2/shuttleslot/middleware"
 	"team2/shuttleslot/model"
 	"team2/shuttleslot/service"
 	"team2/shuttleslot/util"
@@ -12,6 +13,7 @@ import (
 
 type CourtController struct {
 	courtService service.CourtService
+	auth         middleware.AuthMiddleware
 	rg           *gin.RouterGroup
 }
 
@@ -93,17 +95,24 @@ func (c *CourtController) DeleteCourtHandler(ctx *gin.Context) {
 }
 
 func (c *CourtController) Route() {
-	router := c.rg.Group("courts")
-	router.POST("/", c.CreateCourtHandler)
-	router.GET("/", c.FindAllCourtsHandler)
-	router.GET("/:id", c.FindCourtByIdHandler)
-	router.PUT("/:id", c.UpdateCourtHandler)
-	router.DELETE("/:id", c.DeleteCourtHandler)
+	router := c.rg.Group("courts", c.auth.CheckToken("admin", "employee", "customer"))
+	{
+		router.GET("/", c.FindAllCourtsHandler)
+		router.GET("/:id", c.FindCourtByIdHandler)
+	}
+
+	adminGroup := router.Group("/", c.auth.CheckToken("admin"))
+	{
+		adminGroup.POST("/", c.CreateCourtHandler, c.auth.CheckToken("admin"))
+		adminGroup.PUT("/:id", c.UpdateCourtHandler, c.auth.CheckToken("admin"))
+		adminGroup.DELETE("/:id", c.DeleteCourtHandler, c.auth.CheckToken("admin"))
+	}
 }
 
-func NewCourtController(courtService service.CourtService, rg *gin.RouterGroup) *CourtController {
+func NewCourtController(courtService service.CourtService, authMiddleware middleware.AuthMiddleware, rg *gin.RouterGroup) *CourtController {
 	return &CourtController{
 		courtService: courtService,
+		auth:         authMiddleware,
 		rg:           rg,
 	}
 }
