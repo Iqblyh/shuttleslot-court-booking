@@ -17,10 +17,32 @@ type UserService interface {
 	FindUserById(id string) (model.User, error)
 	UpdatedUser(id string, payload model.User) (model.User, error)
 	DeletedUser(id string) error
+	Login(payload dto.LoginRequest) (dto.LoginResponse, error)
 }
 
 type userService struct {
 	userRepository repository.UserRepository
+	auth           AuthService
+}
+
+// Login implements UserService.
+func (s *userService) Login(payload dto.LoginRequest) (dto.LoginResponse, error) {
+	user, err := s.userRepository.FindUserByUsername(payload.Username)
+	if err != nil {
+		return dto.LoginResponse{}, errors.New("username or password invalid! ")
+	}
+
+	err = util.ComparePasswordHash(user.Password, payload.Password)
+	if err != nil {
+		return dto.LoginResponse{}, errors.New("username or password invalid! ")
+	}
+
+	user.Password = ""
+	token, err := s.auth.GenerateToken(user)
+	if err != nil {
+		return dto.LoginResponse{}, errors.New("failed create token! ")
+	}
+	return token, nil
 }
 
 // CreateAdmin implements UserService.
@@ -126,14 +148,15 @@ func (s *userService) UpdatedUser(id string, payload model.User) (model.User, er
 func (s *userService) DeletedUser(id string) error {
 	_, err := s.userRepository.FindUserById(id)
 	if err != nil {
-		return errors.New("User not found")
+		return errors.New("user not found")
 	}
 
 	return s.userRepository.DeleteUser(id)
 }
 
-func NewUserService(userRepository repository.UserRepository) UserService {
+func NewUserService(userRepository repository.UserRepository, authService AuthService) UserService {
 	return &userService{
 		userRepository: userRepository,
+		auth:           authService,
 	}
 }

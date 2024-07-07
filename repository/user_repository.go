@@ -2,7 +2,6 @@ package repository
 
 import (
 	"database/sql"
-	"errors"
 	"math"
 	"team2/shuttleslot/model"
 	"team2/shuttleslot/model/dto"
@@ -115,7 +114,7 @@ func (r *userRepository) UpdateUser(id string, payload model.User) (model.User, 
 	err := r.DB.QueryRow("UPDATE users SET name = $1, phone_number = $2, email = $3, username = $4, password = $5 WHERE id = $6 RETURNING *", payload.Name, payload.PhoneNumber, payload.Email, payload.Username, payload.Password, id).Scan(&user.Id, &user.Name, &user.PhoneNumber, &user.Email, &user.Username, &user.Password, &user.Point, &user.Role, &user.CreatedAt, &user.UpdatedAt)
 
 	if err != nil {
-		return model.User{}, errors.New("repo error")
+		return model.User{}, err
 	}
 
 	return user, nil
