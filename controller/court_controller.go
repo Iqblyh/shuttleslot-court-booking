@@ -103,9 +103,9 @@ func (c *CourtController) Route() {
 
 	adminGroup := router.Group("/", c.auth.CheckToken("admin"))
 	{
-		adminGroup.POST("/", c.CreateCourtHandler, c.auth.CheckToken("admin"))
-		adminGroup.PUT("/:id", c.UpdateCourtHandler, c.auth.CheckToken("admin"))
-		adminGroup.DELETE("/:id", c.DeleteCourtHandler, c.auth.CheckToken("admin"))
+		adminGroup.POST("/", c.CreateCourtHandler)
+		adminGroup.PUT("/:id", c.UpdateCourtHandler)
+		adminGroup.DELETE("/:id", c.DeleteCourtHandler)
 	}
 }
 
