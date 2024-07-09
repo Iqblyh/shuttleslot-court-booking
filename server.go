@@ -8,6 +8,7 @@ import (
 	"team2/shuttleslot/middleware"
 	"team2/shuttleslot/repository"
 	"team2/shuttleslot/service"
+	"team2/shuttleslot/util"
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
@@ -17,6 +18,7 @@ type Server struct {
 	uS      service.UserService
 	cS      service.CourtService
 	auth    middleware.AuthMiddleware
+	util    util.UtilInterface
 	engine  *gin.Engine
 	portApp string
 }
@@ -45,9 +47,10 @@ func NewServer() *Server {
 	portApp := co.AppPort
 	userRepository := repository.NewUserRepository(db)
 	courtRepository := repository.NewCourtRepository(db)
+	utilService := util.NewUtilService()
 
 	authService := service.NewAuthService(co.SecurityConfig)
-	userService := service.NewUserService(userRepository, authService)
+	userService := service.NewUserService(userRepository, authService, utilService)
 	courtService := service.NewCourtService(courtRepository)
 
 	authMiddleware := middleware.NewAuthMiddleware(authService)
