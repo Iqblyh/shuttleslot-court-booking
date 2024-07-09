@@ -23,6 +23,7 @@ type UserService interface {
 type userService struct {
 	userRepository repository.UserRepository
 	auth           AuthService
+	util           util.UtilInterface
 }
 
 // Login implements UserService.
@@ -32,7 +33,7 @@ func (s *userService) Login(payload dto.LoginRequest) (dto.LoginResponse, error)
 		return dto.LoginResponse{}, errors.New("username or password invalid! ")
 	}
 
-	err = util.ComparePasswordHash(user.Password, payload.Password)
+	err = s.util.ComparePasswordHash(user.Password, payload.Password)
 	if err != nil {
 		return dto.LoginResponse{}, errors.New("username or password invalid! ")
 	}
@@ -47,7 +48,7 @@ func (s *userService) Login(payload dto.LoginRequest) (dto.LoginResponse, error)
 
 // CreateAdmin implements UserService.
 func (s *userService) CreateAdmin(payload model.User) (model.User, error) {
-	passwordHash, err := util.EncryptPassword(payload.Password)
+	passwordHash, err := s.util.EncryptPassword(payload.Password)
 	if err != nil {
 		return model.User{}, err
 	}
@@ -59,7 +60,7 @@ func (s *userService) CreateAdmin(payload model.User) (model.User, error) {
 
 // CreateCustomer implements UserService.
 func (s *userService) CreateCustomer(payload model.User) (model.User, error) {
-	passwordHash, err := util.EncryptPassword(payload.Password)
+	passwordHash, err := s.util.EncryptPassword(payload.Password)
 	if err != nil {
 		return model.User{}, err
 	}
@@ -71,7 +72,7 @@ func (s *userService) CreateCustomer(payload model.User) (model.User, error) {
 
 // CreateEmployee implements UserService.
 func (s *userService) CreateEmployee(payload model.User) (model.User, error) {
-	passwordHash, err := util.EncryptPassword(payload.Password)
+	passwordHash, err := s.util.EncryptPassword(payload.Password)
 	if err != nil {
 		return model.User{}, err
 	}
@@ -126,17 +127,17 @@ func (s *userService) UpdatedUser(id string, payload model.User) (model.User, er
 		payload.Username = user.Username
 	}
 
+	if payload.PhoneNumber == "" {
+		payload.PhoneNumber = user.PhoneNumber
+	}
+
 	if payload.Password == "" {
 		passwordHash = user.Password
 	} else {
-		passwordHash, err = util.EncryptPassword(payload.Password)
+		passwordHash, err = s.util.EncryptPassword(payload.Password)
 		if err != nil {
 			return model.User{}, errors.New("error in encrypting password")
 		}
-	}
-
-	if payload.PhoneNumber == "" {
-		payload.PhoneNumber = user.PhoneNumber
 	}
 
 	payload.Password = passwordHash
@@ -154,9 +155,10 @@ func (s *userService) DeletedUser(id string) error {
 	return s.userRepository.DeleteUser(id)
 }
 
-func NewUserService(userRepository repository.UserRepository, authService AuthService) UserService {
+func NewUserService(userRepository repository.UserRepository, authService AuthService, util util.UtilInterface) UserService {
 	return &userService{
 		userRepository: userRepository,
 		auth:           authService,
+		util:           util,
 	}
 }
