@@ -30,10 +30,15 @@ type SecurityConfig struct {
 	Issuer   string
 }
 
+type PayGateConfig struct {
+	ServerKey string
+}
+
 type Config struct {
 	DbConfig
 	AppConfig
 	SecurityConfig
+	PayGateConfig
 }
 
 func (c *Config) readConfig() error {
@@ -54,6 +59,10 @@ func (c *Config) readConfig() error {
 		Issuer:   os.Getenv("JWT_ISSUER_NAME"),
 	}
 
+	c.PayGateConfig = PayGateConfig{
+		ServerKey: os.Getenv("MIDTRANS_SB_SERVER_KEY"),
+	}
+
 	c.DbConfig = DbConfig{
 		Host:     os.Getenv("DB_HOST"),
 		Port:     os.Getenv("DB_PORT"),
@@ -63,7 +72,7 @@ func (c *Config) readConfig() error {
 		Driver:   os.Getenv("DB_DRIVER"),
 	}
 
-	if c.DbConfig.Host == "" || c.DbConfig.Port == "" || c.DbConfig.Name == "" || c.DbConfig.User == "" || c.DbConfig.Password == "" || c.DbConfig.Driver == "" || c.SecurityConfig.Key == "" || c.SecurityConfig.Duration < 0 || c.SecurityConfig.Issuer == "" {
+	if c.DbConfig.Host == "" || c.DbConfig.Port == "" || c.DbConfig.Name == "" || c.DbConfig.User == "" || c.DbConfig.Password == "" || c.DbConfig.Driver == "" || c.SecurityConfig.Key == "" || c.SecurityConfig.Duration < 0 || c.SecurityConfig.Issuer == "" || c.PayGateConfig.ServerKey == "" {
 		return errors.New("missing environment config")
 	}
 	return nil

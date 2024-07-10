@@ -17,6 +17,8 @@ import (
 type Server struct {
 	uS      service.UserService
 	cS      service.CourtService
+	bS      service.BookingService
+	pGS     service.PaymentGateService
 	auth    middleware.AuthMiddleware
 	util    util.UtilInterface
 	engine  *gin.Engine
@@ -27,6 +29,7 @@ func (s *Server) initiateRoute() {
 	routerGroup := s.engine.Group("/api/v1")
 	controller.NewUserController(s.uS, s.auth, routerGroup).Route()
 	controller.NewCourtController(s.cS, s.auth, routerGroup).Route()
+	controller.NewBookingController(s.bS, routerGroup).Route()
 }
 
 func (s *Server) Start() {
@@ -47,11 +50,14 @@ func NewServer() *Server {
 	portApp := co.AppPort
 	userRepository := repository.NewUserRepository(db)
 	courtRepository := repository.NewCourtRepository(db)
-	utilService := util.NewUtilService()
+	bookingRepository := repository.NewBookingRepository(db)
 
+	utilService := util.NewUtilService()
+	payGateService := service.NewPayGateService(co.PayGateConfig, bookingRepository)
 	authService := service.NewAuthService(co.SecurityConfig)
 	userService := service.NewUserService(userRepository, authService, utilService)
 	courtService := service.NewCourtService(courtRepository)
+	bookingService := service.NewBookingService(bookingRepository, userService, courtService, payGateService)
 
 	authMiddleware := middleware.NewAuthMiddleware(authService)
 
@@ -59,6 +65,8 @@ func NewServer() *Server {
 		uS:      userService,
 		cS:      courtService,
 		engine:  gin.Default(),
+		bS:      bookingService,
+		pGS:     payGateService,
 		auth:    authMiddleware,
 		portApp: portApp,
 	}
