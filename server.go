@@ -29,7 +29,7 @@ func (s *Server) initiateRoute() {
 	routerGroup := s.engine.Group("/api/v1")
 	controller.NewUserController(s.uS, s.auth, routerGroup).Route()
 	controller.NewCourtController(s.cS, s.auth, routerGroup).Route()
-	controller.NewBookingController(s.bS, routerGroup).Route()
+	controller.NewBookingController(s.bS, s.auth, routerGroup).Route()
 }
 
 func (s *Server) Start() {
