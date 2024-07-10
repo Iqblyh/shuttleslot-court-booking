@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"team2/shuttleslot/model"
 	"team2/shuttleslot/model/dto"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -48,7 +49,7 @@ type GetUserByRoleResponse struct {
 	Role        string `json:"role"`
 }
 
-func (u *GetUserByRoleResponse) FromModel(payload model.User) *GetUserByRoleResponse {
+func (*GetUserByRoleResponse) FromModel(payload model.User) *GetUserByRoleResponse {
 	return &GetUserByRoleResponse{
 		Id:          payload.Id,
 		Name:        payload.Name,
@@ -57,5 +58,116 @@ func (u *GetUserByRoleResponse) FromModel(payload model.User) *GetUserByRoleResp
 		Username:    payload.Username,
 		Point:       payload.Point,
 		Role:        payload.Role,
+	}
+}
+
+type CreateBookingResponse struct {
+	BookingId    string          `json:"bookingId"`
+	BookingDate  string          `json:"bookingDate"`
+	CustomerName string          `json:"customerName"`
+	CourtName    string          `json:"courtName"`
+	StartTime    string          `json:"startTime"`
+	EndTime      string          `json:"endTime"`
+	TotalPayment int             `json:"totalPayment"`
+	Payment      PaymentResponse `json:"payment"`
+}
+
+type PaymentResponse struct {
+	OrderId     string `json:"orderId"`
+	Description string `json:"description"`
+	Price       int    `json:"price"`
+	PaymentUrl  string `json:"paymentUrl"`
+}
+
+func (*CreateBookingResponse) FromModel(payload model.Booking) *CreateBookingResponse {
+	return &CreateBookingResponse{
+		BookingId:    payload.Id,
+		BookingDate:  DateToString(payload.BookingDate),
+		CustomerName: payload.Customer.Name,
+		CourtName:    payload.Court.Name,
+		StartTime:    TimeToString(payload.StartTime),
+		EndTime:      TimeToString(payload.EndTime),
+		TotalPayment: payload.Total_Payment,
+		Payment: PaymentResponse{
+			OrderId:     payload.PaymentDetails[0].OrderId,
+			Description: payload.PaymentDetails[0].Description,
+			Price:       payload.PaymentDetails[0].Price,
+			PaymentUrl:  payload.PaymentDetails[0].PaymentURL,
+		},
+	}
+}
+
+type CreateRepaymentResponse struct {
+	BookingId     string `json:"bookingId"`
+	OrderId       string `json:"orderId"`
+	Description   string `json:"description"`
+	Price         int    `json:"price"`
+	PaymentMethod string `json:"paymentMethod"`
+	PaymentUrl    string `json:"paymentUrl"`
+}
+
+func (*CreateRepaymentResponse) FromModel(payload model.Payment) *CreateRepaymentResponse {
+	return &CreateRepaymentResponse{
+		BookingId:     payload.BookingId,
+		OrderId:       payload.OrderId,
+		Description:   payload.Description,
+		Price:         payload.Price,
+		PaymentMethod: payload.PaymentMethod,
+		PaymentUrl:    payload.PaymentURL,
+	}
+}
+
+type GetBookingsResponse struct {
+	Id          string      `json:"id"`
+	Customer    UserBooking `json:"customer"`
+	Court       CourBooking `json:"court"`
+	Employee    UserBooking `json:"employee"`
+	BookingDate string      `json:"bookingDate"`
+	StartTime   string      `json:"startTime"`
+	EndTime     string      `json:"endTime"`
+	Status      string      `json:"status"`
+	CreatedAt   time.Time   `json:"createdAt"`
+	UpdatedAt   time.Time   `json:"updatedAt"`
+}
+
+type UserBooking struct {
+	Id          string `json:"id"`
+	Name        string `json:"name"`
+	PhoneNumber string `json:"phoneNumber"`
+	Email       string `json:"email"`
+}
+
+type CourBooking struct {
+	Id    string `json:"id"`
+	Name  string `json:"name"`
+	Price int    `json:"price"`
+}
+
+func (*GetBookingsResponse) FromModel(payload model.Booking) *GetBookingsResponse {
+	return &GetBookingsResponse{
+		Id: payload.Id,
+		Customer: UserBooking{
+			Id:          payload.Customer.Id,
+			Name:        payload.Customer.Name,
+			PhoneNumber: payload.Customer.PhoneNumber,
+			Email:       payload.Customer.Email,
+		},
+		Court: CourBooking{
+			Id:    payload.Court.Id,
+			Name:  payload.Court.Name,
+			Price: payload.Court.Price,
+		},
+		Employee: UserBooking{
+			Id:          payload.Employee.Id,
+			Name:        payload.Employee.Name,
+			PhoneNumber: payload.Employee.PhoneNumber,
+			Email:       payload.Employee.Email,
+		},
+		BookingDate: DateToString(payload.BookingDate),
+		StartTime:   TimeToString(payload.StartTime),
+		EndTime:     TimeToString(payload.EndTime),
+		Status:      payload.Status,
+		CreatedAt:   payload.CreatedAt,
+		UpdatedAt:   payload.UpdatedAt,
 	}
 }
