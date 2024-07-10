@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"team2/shuttleslot/middleware"
 	"team2/shuttleslot/model/dto"
 	"team2/shuttleslot/service"
 	"team2/shuttleslot/util"
@@ -15,20 +16,28 @@ import (
 
 type BookingController struct {
 	service service.BookingService
+	auth    middleware.AuthMiddleware
 	rg      *gin.RouterGroup
 }
 
 func (c *BookingController) Route() {
 	router := c.rg.Group("bookings")
 	{
-		router.POST("/", c.CreateBookingHandler)
+		router.POST("/", c.auth.CheckToken("admin", "employee", "customer"), c.CreateBookingHandler)
 		router.POST("/payment/notif", c.NotificationHandler)
-		router.POST("/repayment", c.CreateRepayHandler)
-		router.GET("/", c.GetAllBookingsHandler)
-		router.GET("/check", c.CheckBookingHandler)
-		router.GET("/ending", c.CheckEndingHandler)
-		router.GET("/report", c.PaymentReportHandler)
-		// router.GET("/payment/cancel", c.GetCancel)
+		router.GET("/check", c.auth.CheckToken("admin", "employee", "customer"), c.CheckBookingHandler)
+	}
+
+	adminGroup := router.Group("/", c.auth.CheckToken("admin"))
+	{
+		adminGroup.GET("/report", c.PaymentReportHandler)
+		adminGroup.GET("/", c.GetAllBookingsHandler)
+	}
+
+	employeeGroup := router.Group("/", c.auth.CheckToken("admin", "employee"))
+	{
+		employeeGroup.POST("/repayment", c.CreateRepayHandler)
+		employeeGroup.GET("/ending", c.CheckEndingHandler)
 	}
 }
 
@@ -39,6 +48,8 @@ func (c *BookingController) CreateBookingHandler(ctx *gin.Context) {
 		util.SendErrorResponse(ctx, err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	payload.CustomerId = ctx.GetString("userId")
 
 	dateNow := util.StringToDate(time.Now().Format("02-01-2006"))
 	timeNow := util.StringToTime(time.Now().Format("15:04:05"))
@@ -95,6 +106,13 @@ func (c *BookingController) CreateRepayHandler(ctx *gin.Context) {
 		util.SendErrorResponse(ctx, err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	if !util.IsValidPaymentMethod(payload.PaymentMethod) {
+		util.SendErrorResponse(ctx, "invalid payment method, use 'mid' for midtrans or 'cash'", http.StatusBadRequest)
+		return
+	}
+
+	payload.EmployeeId = ctx.GetString("userId")
 
 	data, err := c.service.CreateRepay(payload)
 	if err != nil {
@@ -224,27 +242,12 @@ func (c *BookingController) PaymentReportHandler(ctx *gin.Context) {
 	}
 
 	util.SendReportPaginateResponse(ctx, "success get data", listData, totalIncome, paginate, http.StatusOK)
-
 }
 
-// func (c *BookingController) GetCancel(ctx *gin.Context) {
-// 	orderId := ctx.Query("order_id")
-
-// 	fmt.Println("================ Payload >>>> ", orderId)
-
-// 	err := c.service.UpdateCancel(orderId)
-// 	if err != nil {
-// 		util.SendErrorResponse(ctx, "Data with that id not found", http.StatusInternalServerError)
-// 		return
-// 	}
-
-// 	util.SendSingleResponse(ctx, "success update data", orderId, http.StatusOK)
-
-// }
-
-func NewBookingController(bookingService service.BookingService, rg *gin.RouterGroup) *BookingController {
+func NewBookingController(bookingService service.BookingService, authMiddleware middleware.AuthMiddleware, rg *gin.RouterGroup) *BookingController {
 	return &BookingController{
 		service: bookingService,
+		auth:    authMiddleware,
 		rg:      rg,
 	}
 }

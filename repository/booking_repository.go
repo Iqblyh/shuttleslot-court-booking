@@ -25,7 +25,6 @@ type BookingRepository interface {
 	FindBooked(bookingDate time.Time, page int, size int) ([]model.Booking, dto.Paginate, error)
 	FindEnding(bookingDate time.Time, page int, size int) ([]model.Booking, dto.Paginate, error)
 	FindPaymentReport(day, month, year, page, size int, filterType string) ([]model.Payment, dto.Paginate, int64, error)
-	// UpdateCancel(orderId string) error // Update Cancel Masih ku coba, skip dulu unit testingnya
 }
 
 func (r *bookingRepository) Create(payload model.Booking) (model.Booking, error) {
@@ -577,26 +576,6 @@ func (r *bookingRepository) FindPaymentReport(day, month, year, page, size int, 
 
 	return payments, paginate, totalIncome, nil
 }
-
-// func (r *bookingRepository) UpdateCancel(orderId string) error {
-// 	transaction, _ := r.DB.Begin()
-
-// 	bookingId := ""
-// 	err := transaction.QueryRow("SELECT booking_id FROM payments WHERE order_id = $1", orderId).Scan(&bookingId)
-// 	if err != nil {
-// 		transaction.Rollback()
-// 		return err
-// 	}
-
-// 	_, err = transaction.Exec("UPDATE bookings SET status = $1 WHERE id = $2", "cancel", bookingId)
-// 	if err != nil {
-// 		transaction.Rollback()
-// 		return err
-// 	}
-
-// 	transaction.Commit()
-// 	return nil
-// }
 
 func NewBookingRepository(db *sql.DB) BookingRepository {
 	return &bookingRepository{

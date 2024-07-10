@@ -20,7 +20,6 @@ type BookingService interface {
 	FindBookedCourt(bookingDate time.Time, page int, size int) ([]model.Booking, dto.Paginate, error)
 	FindEndingBookings(bookingDate time.Time, page int, size int) ([]model.Booking, dto.Paginate, error)
 	FindPaymentReport(day, month, year, page, size int, filterType string) ([]model.Payment, dto.Paginate, int64, error)
-	// UpdateCancel(orderId string) error //Update Cancel Masih ku coba, skip dulu unit testingnya
 }
 
 type bookingService struct {
@@ -159,6 +158,10 @@ func (s *bookingService) CreateRepay(payload dto.CreateRepayRequest) (model.Paym
 	}
 
 	if booking.Status != "booked" {
+		if booking.Status == "done" {
+			return model.Payment{}, errors.New("this booking already completed")
+
+		}
 		return model.Payment{}, errors.New("this booking still not booked")
 	}
 
@@ -272,10 +275,6 @@ func (s *bookingService) FindEndingBookings(bookingDate time.Time, page int, siz
 func (s *bookingService) FindPaymentReport(day, month, year, page, size int, filterType string) ([]model.Payment, dto.Paginate, int64, error) {
 	return s.bookingRepository.FindPaymentReport(day, month, year, page, size, filterType)
 }
-
-// func (s *bookingService) UpdateCancel(orderId string) error {
-// 	return s.bookingRepository.UpdateCancel(orderId)
-// }
 
 func NewBookingService(bookingRepository repository.BookingRepository, userService UserService, courtService CourtService, payGate PaymentGateService) BookingService {
 	return &bookingService{
