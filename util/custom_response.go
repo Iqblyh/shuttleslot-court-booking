@@ -30,6 +30,18 @@ func SendPaginateResponse(c *gin.Context, message string, data []any, paginate d
 	})
 }
 
+func SendReportPaginateResponse(c *gin.Context, message string, data []any, totalIncome int64, paginate dto.Paginate, code int) {
+	c.JSON(http.StatusOK, dto.ReportPaginateResponse{
+		Status: dto.Status{
+			Code:    code,
+			Message: message,
+		},
+		Data:        data,
+		TotalIncome: totalIncome,
+		Paginate:    paginate,
+	})
+}
+
 func SendErrorResponse(c *gin.Context, message string, code int) {
 	c.JSON(code, dto.SingleResponse{
 		Status: dto.Status{
@@ -169,5 +181,65 @@ func (*GetBookingsResponse) FromModel(payload model.Booking) *GetBookingsRespons
 		Status:      payload.Status,
 		CreatedAt:   payload.CreatedAt,
 		UpdatedAt:   payload.UpdatedAt,
+	}
+}
+
+type CheckBookingResponse struct {
+	CourtName   string `json:"courtName"`
+	BookingDate string `json:"bookingDate"`
+	StartTime   string `json:"startTime"`
+	EndTime     string `json:"endTime"`
+	Status      string `json:"status"`
+}
+
+func (*CheckBookingResponse) FromModel(payload model.Booking) *CheckBookingResponse {
+	return &CheckBookingResponse{
+		CourtName:   payload.Court.Name,
+		BookingDate: DateToString(payload.BookingDate),
+		StartTime:   TimeToString(payload.StartTime),
+		EndTime:     TimeToString(payload.EndTime),
+		Status:      payload.Status,
+	}
+}
+
+type GetEndingResponse struct {
+	CustomerName string `json:"customerName"`
+	CourtName    string `json:"courtName"`
+	BookingDate  string `json:"bookingDate"`
+	StartTime    string `json:"startTime"`
+	EndTime      string `json:"endTime"`
+	TotalPayment int    `json:"totalPayment"`
+	Status       string `json:"status"`
+}
+
+func (*GetEndingResponse) FromModel(payload model.Booking) *GetEndingResponse {
+	return &GetEndingResponse{
+		CustomerName: payload.Customer.Name,
+		CourtName:    payload.Court.Name,
+		BookingDate:  DateToString(payload.BookingDate),
+		StartTime:    TimeToString(payload.StartTime),
+		EndTime:      TimeToString(payload.EndTime),
+		TotalPayment: payload.Total_Payment,
+		Status:       payload.Status,
+	}
+}
+
+type GetPaymentReportResponse struct {
+	PaymentId     string `json:"paymentId"`
+	BookingId     string `json:"bookingId"`
+	OrderId       string `json:"orderId"`
+	Description   string `json:"description"`
+	PaymentMethod string `json:"paymentMethod"`
+	Price         int    `json:"price"`
+}
+
+func (*GetPaymentReportResponse) FromModel(payload model.Payment) *GetPaymentReportResponse {
+	return &GetPaymentReportResponse{
+		PaymentId:     payload.Id,
+		BookingId:     payload.BookingId,
+		OrderId:       payload.OrderId,
+		Description:   payload.Description,
+		PaymentMethod: payload.PaymentMethod,
+		Price:         payload.Price,
 	}
 }

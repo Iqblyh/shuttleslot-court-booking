@@ -17,7 +17,10 @@ type BookingService interface {
 	UpdatePayment(payload dto.PaymentNotificationInput) error
 	CreateRepay(payload dto.CreateRepayRequest) (model.Payment, error)
 	FindAllBookings(page int, size int) ([]model.Booking, dto.Paginate, error)
-	UpdateCancel(orderId string) error //Update Cancel Masih ku coba, skip dulu unit testingnya
+	FindBookedCourt(bookingDate time.Time, page int, size int) ([]model.Booking, dto.Paginate, error)
+	FindEndingBookings(bookingDate time.Time, page int, size int) ([]model.Booking, dto.Paginate, error)
+	FindPaymentReport(day, month, year, page, size int, filterType string) ([]model.Payment, dto.Paginate, int64, error)
+	// UpdateCancel(orderId string) error //Update Cancel Masih ku coba, skip dulu unit testingnya
 }
 
 type bookingService struct {
@@ -38,7 +41,10 @@ func (s *bookingService) Create(payload dto.CreateBookingRequest) (model.Booking
 	endTime := util.StringToTime(payload.StartTime).Add(time.Hour * time.Duration(payload.Hour))
 
 	for _, val := range existBooking {
-		if val.Court.Id == payload.CourtId && util.DateToString(val.BookingDate) == payload.BookingDate {
+		if val.Customer.Id == payload.CustomerId && val.Status == "pending" {
+			return model.Booking{}, errors.New("cannot book, there still payment to complete")
+		}
+		if val.Court.Id == payload.CourtId && util.DateToString(val.BookingDate) == payload.BookingDate && (val.Status == "pending" || val.Status == "booked" || val.Status == "done") {
 			if util.InTimeSpanStart(val.StartTime, val.EndTime, util.StringToTime(payload.StartTime)) {
 				err = errors.New("cannot book court in that time")
 
@@ -221,9 +227,55 @@ func (s *bookingService) FindAllBookings(page int, size int) ([]model.Booking, d
 	return s.bookingRepository.FindAll(page, size)
 }
 
-func (s *bookingService) UpdateCancel(orderId string) error {
-	return s.bookingRepository.UpdateCancel(orderId)
+func (s *bookingService) FindBookedCourt(bookingDate time.Time, page int, size int) ([]model.Booking, dto.Paginate, error) {
+	bookings, paginate, err := s.bookingRepository.FindBooked(bookingDate, page, size)
+	if err != nil {
+		return []model.Booking{}, dto.Paginate{}, err
+	}
+
+	for i, val := range bookings {
+		court, err := s.courtServ.FindCourtById(val.Court.Id)
+		if err != nil {
+			return []model.Booking{}, dto.Paginate{}, err
+		}
+
+		bookings[i].Court = court
+	}
+
+	return bookings, paginate, nil
 }
+
+func (s *bookingService) FindEndingBookings(bookingDate time.Time, page int, size int) ([]model.Booking, dto.Paginate, error) {
+	bookings, paginate, err := s.bookingRepository.FindEnding(bookingDate, page, size)
+	if err != nil {
+		return []model.Booking{}, dto.Paginate{}, err
+	}
+
+	for i, val := range bookings {
+		customer, err := s.userServ.FindUserById(val.Customer.Id)
+		if err != nil {
+			return []model.Booking{}, dto.Paginate{}, err
+		}
+
+		court, err := s.courtServ.FindCourtById(val.Court.Id)
+		if err != nil {
+			return []model.Booking{}, dto.Paginate{}, err
+		}
+
+		bookings[i].Customer = customer
+		bookings[i].Court = court
+	}
+
+	return bookings, paginate, nil
+}
+
+func (s *bookingService) FindPaymentReport(day, month, year, page, size int, filterType string) ([]model.Payment, dto.Paginate, int64, error) {
+	return s.bookingRepository.FindPaymentReport(day, month, year, page, size, filterType)
+}
+
+// func (s *bookingService) UpdateCancel(orderId string) error {
+// 	return s.bookingRepository.UpdateCancel(orderId)
+// }
 
 func NewBookingService(bookingRepository repository.BookingRepository, userService UserService, courtService CourtService, payGate PaymentGateService) BookingService {
 	return &bookingService{

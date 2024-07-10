@@ -8,7 +8,7 @@ func TimeToString(time time.Time) string {
 }
 
 func DateToString(date time.Time) string {
-	stringDate := date.Format("2006-01-02")
+	stringDate := date.Format("02-01-2006")
 	return stringDate
 }
 
@@ -18,7 +18,7 @@ func StringToTime(timeString string) time.Time {
 }
 
 func StringToDate(dateString string) time.Time {
-	formatedDate, _ := time.Parse("2006-01-02", dateString)
+	formatedDate, _ := time.Parse("02-01-2006", dateString)
 	return formatedDate
 }
 

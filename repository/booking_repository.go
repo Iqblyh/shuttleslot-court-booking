@@ -22,7 +22,10 @@ type BookingRepository interface {
 	UpdateStatus(payload model.Payment) error
 	CreateRepay(payload model.Payment) (model.Payment, error)
 	UpdateRepaymentStatus(payload model.Payment) error
-	UpdateCancel(orderId string) error // Update Cancel Masih ku coba, skip dulu unit testingnya
+	FindBooked(bookingDate time.Time, page int, size int) ([]model.Booking, dto.Paginate, error)
+	FindEnding(bookingDate time.Time, page int, size int) ([]model.Booking, dto.Paginate, error)
+	FindPaymentReport(day, month, year, page, size int, filterType string) ([]model.Payment, dto.Paginate, int64, error)
+	// UpdateCancel(orderId string) error // Update Cancel Masih ku coba, skip dulu unit testingnya
 }
 
 func (r *bookingRepository) Create(payload model.Booking) (model.Booking, error) {
@@ -311,9 +314,18 @@ func (r *bookingRepository) UpdateStatus(payload model.Payment) error {
 	}
 
 	if payload.Status == "cancel" {
+		updatePayment := "DELETE FROM payments WHERE order_id = $1"
+
+		_, err := transaction.Exec(updatePayment, payload.OrderId)
+
+		if err != nil {
+			transaction.Rollback()
+			return err
+		}
+
 		updateBooking := "UPDATE bookings SET status = $1, updated_at = $2 WHERE id = $3"
 
-		_, err := transaction.Exec(updateBooking, "cancel", time.Now(), payload.BookingId)
+		_, err = transaction.Exec(updateBooking, "cancel", time.Now(), payload.BookingId)
 
 		if err != nil {
 			transaction.Rollback()
@@ -421,25 +433,170 @@ func (r *bookingRepository) UpdateRepaymentStatus(payload model.Payment) error {
 	return nil
 }
 
-func (r *bookingRepository) UpdateCancel(orderId string) error {
-	transaction, _ := r.DB.Begin()
+func (r *bookingRepository) FindBooked(bookingDate time.Time, page int, size int) ([]model.Booking, dto.Paginate, error) {
+	var bookings []model.Booking
 
-	bookingId := ""
-	err := transaction.QueryRow("SELECT booking_id FROM payments WHERE order_id = $1", orderId).Scan(&bookingId)
+	query := "SELECT court_id, booking_date, start_time, end_time, status FROM bookings WHERE booking_date = $1 AND status IN ('pending', 'booked') LIMIT $2 OFFSET $3"
+
+	offset := (page - 1) * size
+	rows, err := r.DB.Query(query, bookingDate, size, offset)
 	if err != nil {
-		transaction.Rollback()
-		return err
+		return []model.Booking{}, dto.Paginate{}, err
 	}
 
-	_, err = transaction.Exec("UPDATE bookings SET status = $1 WHERE id = $2", "cancel", bookingId)
-	if err != nil {
-		transaction.Rollback()
-		return err
+	totalRows := 0
+
+	for rows.Next() {
+		var b model.Booking
+		if err := rows.Scan(
+			&b.Court.Id,
+			&b.BookingDate,
+			&b.StartTime,
+			&b.EndTime,
+			&b.Status,
+		); err != nil {
+			return []model.Booking{}, dto.Paginate{}, err
+		}
+
+		bookings = append(bookings, b)
+		totalRows++
 	}
 
-	transaction.Commit()
-	return nil
+	paginate := dto.Paginate{
+		Page:       page,
+		Size:       size,
+		TotalRows:  totalRows,
+		TotalPages: int(math.Ceil(float64(totalRows) / float64(size))),
+	}
+
+	return bookings, paginate, nil
 }
+
+func (r *bookingRepository) FindEnding(bookingDate time.Time, page int, size int) ([]model.Booking, dto.Paginate, error) {
+	var bookings []model.Booking
+
+	query := "SELECT id, customer_id, court_id, booking_date, start_time, end_time, total_payment, status FROM bookings WHERE booking_date = $1 AND status = 'booked' LIMIT $2 OFFSET $3"
+
+	offset := (page - 1) * size
+
+	rows, err := r.DB.Query(query, bookingDate, size, offset)
+	if err != nil {
+		return []model.Booking{}, dto.Paginate{}, err
+	}
+
+	totalRows := 0
+
+	for rows.Next() {
+		var b model.Booking
+		if err := rows.Scan(
+			&b.Id,
+			&b.Customer.Id,
+			&b.Court.Id,
+			&b.BookingDate,
+			&b.StartTime,
+			&b.EndTime,
+			&b.Total_Payment,
+			&b.Status,
+		); err != nil {
+			return []model.Booking{}, dto.Paginate{}, err
+		}
+
+		bookings = append(bookings, b)
+		totalRows++
+	}
+
+	paginate := dto.Paginate{
+		Page:       page,
+		Size:       size,
+		TotalRows:  totalRows,
+		TotalPages: int(math.Ceil(float64(totalRows) / float64(size))),
+	}
+
+	return bookings, paginate, nil
+}
+
+func (r *bookingRepository) FindPaymentReport(day, month, year, page, size int, filterType string) ([]model.Payment, dto.Paginate, int64, error) {
+	var payments []model.Payment
+	var rows *sql.Rows
+	var err error
+
+	query := "SELECT id, booking_id, order_id, description, payment_method, price FROM payments WHERE "
+
+	offset := (page - 1) * size
+
+	if filterType == "daily" {
+		dailyQuery := "EXTRACT(DAY FROM created_at) = $1  AND EXTRACT(MONTH FROM created_at) = $2 AND EXTRACT(YEAR FROM created_at) = $3 LIMIT $4 OFFSET $5"
+		query += dailyQuery
+
+		rows, err = r.DB.Query(query, day, month, year, size, offset)
+
+	} else if filterType == "monthly" {
+		monthlyQuery := "EXTRACT(MONTH FROM created_at) = $1 AND EXTRACT(YEAR FROM created_at) = $2 LIMIT $3 OFFSET $4"
+		query += monthlyQuery
+
+		rows, err = r.DB.Query(query, month, year, size, offset)
+
+	} else if filterType == "yearly" {
+		yearlyQuery := "EXTRACT(YEAR FROM created_at) = $1 LIMIT $2 OFFSET $3"
+		query += yearlyQuery
+
+		rows, err = r.DB.Query(query, year, size, offset)
+	}
+
+	if err != nil {
+		return []model.Payment{}, dto.Paginate{}, 0, err
+	}
+
+	totalRows := 0
+	var totalIncome int64
+
+	for rows.Next() {
+		var p model.Payment
+		if err := rows.Scan(
+			&p.Id,
+			&p.BookingId,
+			&p.OrderId,
+			&p.Description,
+			&p.PaymentMethod,
+			&p.Price,
+		); err != nil {
+			return []model.Payment{}, dto.Paginate{}, 0, err
+		}
+
+		payments = append(payments, p)
+		totalRows++
+		totalIncome += int64(p.Price)
+	}
+
+	paginate := dto.Paginate{
+		Page:       page,
+		Size:       size,
+		TotalRows:  totalRows,
+		TotalPages: int(math.Ceil(float64(totalRows) / float64(size))),
+	}
+
+	return payments, paginate, totalIncome, nil
+}
+
+// func (r *bookingRepository) UpdateCancel(orderId string) error {
+// 	transaction, _ := r.DB.Begin()
+
+// 	bookingId := ""
+// 	err := transaction.QueryRow("SELECT booking_id FROM payments WHERE order_id = $1", orderId).Scan(&bookingId)
+// 	if err != nil {
+// 		transaction.Rollback()
+// 		return err
+// 	}
+
+// 	_, err = transaction.Exec("UPDATE bookings SET status = $1 WHERE id = $2", "cancel", bookingId)
+// 	if err != nil {
+// 		transaction.Rollback()
+// 		return err
+// 	}
+
+// 	transaction.Commit()
+// 	return nil
+// }
 
 func NewBookingRepository(db *sql.DB) BookingRepository {
 	return &bookingRepository{

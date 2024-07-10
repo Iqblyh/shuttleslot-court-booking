@@ -22,3 +22,10 @@ type PaginateResponse struct {
 	Data     []any    `json:"data"`
 	Paginate Paginate `json:"paginate"`
 }
+
+type ReportPaginateResponse struct {
+	Status      Status   `json:"status"`
+	Data        []any    `json:"data"`
+	TotalIncome int64    `json:"totalIncome"`
+	Paginate    Paginate `json:"paginate"`
+}
