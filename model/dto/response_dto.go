@@ -29,3 +29,9 @@ type ReportPaginateResponse struct {
 	TotalIncome int64    `json:"totalIncome"`
 	Paginate    Paginate `json:"paginate"`
 }
+
+type PaymentResponse struct {
+	OrderId           string `json:"order_id"`
+	TransactionStatus string `json:"transaction_status"`
+	Status            Status `json:"status"`
+}
