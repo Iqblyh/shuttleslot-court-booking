@@ -2,7 +2,7 @@ package service
 
 import (
 	"errors"
-	authmock "team2/shuttleslot/mock/authmock"
+	authmock "team2/shuttleslot/mock/auth_mock"
 	repomock "team2/shuttleslot/mock/repo_mock"
 	utilmock "team2/shuttleslot/mock/util_mock"
 	"team2/shuttleslot/model"
