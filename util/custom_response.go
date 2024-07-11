@@ -51,6 +51,17 @@ func SendErrorResponse(c *gin.Context, message string, code int) {
 	})
 }
 
+func SendPaymentResponse(c *gin.Context, data dto.PaymentResponse, code int) {
+	c.JSON(code, dto.PaymentResponse{
+		OrderId:           data.OrderId,
+		TransactionStatus: data.TransactionStatus,
+		Status: dto.Status{
+			Code:    code,
+			Message: data.TransactionStatus,
+		},
+	})
+}
+
 type GetUserByRoleResponse struct {
 	Id          string `json:"id"`
 	Name        string `json:"name"`
