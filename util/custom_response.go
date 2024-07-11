@@ -203,6 +203,7 @@ func (*CheckBookingResponse) FromModel(payload model.Booking) *CheckBookingRespo
 }
 
 type GetEndingResponse struct {
+	BookingId    string `json:"bookingId"`
 	CustomerName string `json:"customerName"`
 	CourtName    string `json:"courtName"`
 	BookingDate  string `json:"bookingDate"`
@@ -214,6 +215,7 @@ type GetEndingResponse struct {
 
 func (*GetEndingResponse) FromModel(payload model.Booking) *GetEndingResponse {
 	return &GetEndingResponse{
+		BookingId:    payload.Id,
 		CustomerName: payload.Customer.Name,
 		CourtName:    payload.Court.Name,
 		BookingDate:  DateToString(payload.BookingDate),

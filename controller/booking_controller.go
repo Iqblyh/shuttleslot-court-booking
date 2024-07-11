@@ -37,7 +37,7 @@ func (c *BookingController) Route() {
 	employeeGroup := router.Group("/", c.auth.CheckToken("admin", "employee"))
 	{
 		employeeGroup.POST("/repayment", c.CreateRepayHandler)
-		employeeGroup.GET("/ending", c.CheckEndingHandler)
+		employeeGroup.GET("/today", c.CheckBookingTodayHandler)
 	}
 }
 
@@ -46,6 +46,11 @@ func (c *BookingController) CreateBookingHandler(ctx *gin.Context) {
 
 	if err := ctx.ShouldBindJSON(&payload); err != nil {
 		util.SendErrorResponse(ctx, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if !util.IsValidDate(payload.BookingDate) || !util.IsValidTime(payload.StartTime) {
+		util.SendErrorResponse(ctx, "invalid date or time format, use 'dd-mm-yyyy for bookingDate and 'hh-mm-ss' for startTime", http.StatusBadRequest)
 		return
 	}
 
@@ -159,7 +164,13 @@ func (c *BookingController) CheckBookingHandler(ctx *gin.Context) {
 
 	if ctx.Query("bookingDate") == "" {
 		bookingDate = util.StringToDate(time.Now().String())
+
 	} else {
+		if !util.IsValidDate(ctx.Query("bookingDate")) {
+			util.SendErrorResponse(ctx, "invalid date or time format, use 'dd-mm-yyyy for bookingDate", http.StatusBadRequest)
+			return
+
+		}
 		bookingDate = util.StringToDate(ctx.Query("bookingDate"))
 	}
 
@@ -179,7 +190,7 @@ func (c *BookingController) CheckBookingHandler(ctx *gin.Context) {
 	util.SendPaginateResponse(ctx, "success get data", listData, paginate, http.StatusOK)
 }
 
-func (c *BookingController) CheckEndingHandler(ctx *gin.Context) {
+func (c *BookingController) CheckBookingTodayHandler(ctx *gin.Context) {
 	page, err1 := strconv.Atoi(ctx.DefaultQuery("page", "1"))
 	size, err2 := strconv.Atoi(ctx.DefaultQuery("size", "10"))
 	if err1 != nil || err2 != nil {
@@ -218,9 +229,14 @@ func (c *BookingController) PaymentReportHandler(ctx *gin.Context) {
 	defaultYear := strconv.Itoa(time.Now().Year())
 
 	filter := ctx.DefaultQuery("filter", "daily")
-	day, _ := strconv.Atoi(ctx.DefaultQuery("day", defaultDay))
-	month, _ := strconv.Atoi(ctx.DefaultQuery("month", defaultMonth))
-	year, _ := strconv.Atoi(ctx.DefaultQuery("year", defaultYear))
+	day, err1 := strconv.Atoi(ctx.DefaultQuery("day", defaultDay))
+	month, err2 := strconv.Atoi(ctx.DefaultQuery("month", defaultMonth))
+	year, err3 := strconv.Atoi(ctx.DefaultQuery("year", defaultYear))
+
+	if err1 != nil || err2 != nil || err3 != nil {
+		util.SendErrorResponse(ctx, "invalid day, month, or year, use number with format 'dd', 'mm', 'yyyy'", http.StatusBadRequest)
+		return
+	}
 
 	if !util.IsValidFilter(filter) {
 		util.SendErrorResponse(ctx, "invalid filter, use 'daily', 'monthly', 'yearly'", http.StatusBadRequest)

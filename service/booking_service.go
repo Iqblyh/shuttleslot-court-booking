@@ -75,10 +75,15 @@ func (s *bookingService) Create(payload dto.CreateBookingRequest) (model.Booking
 	random := rand.New(rand.NewSource(time.Now().UnixNano()))
 	orderId := fmt.Sprintf("Booking%s-%d", fmt.Sprintf("%05d", totalBooking+1), random.Int())
 	desc := fmt.Sprintf("Pembayaran Booking %s", court.Name)
+	realCourtPrice := 0
 
-	realCourtPrice := court.Price
-
-	court.Price = court.Price / 2
+	if customer.Point >= 100 {
+		realCourtPrice = court.Price - 10000
+		court.Price = realCourtPrice / 2
+	} else {
+		realCourtPrice = court.Price
+		court.Price = court.Price / 2
+	}
 
 	payment := model.Payment{
 		OrderId:     orderId,
@@ -137,12 +142,8 @@ func (s *bookingService) UpdatePayment(payload dto.PaymentNotificationInput) err
 		return nil
 	}
 
-	fmt.Println("==================== PAYMENT >>>> ", payment)
-
 	err = s.bookingRepository.UpdateRepaymentStatus(payment)
 	if err != nil {
-		fmt.Println("==================== ERROR >>>> ", err.Error())
-
 		return err
 	}
 
@@ -184,8 +185,8 @@ func (s *bookingService) CreateRepay(payload dto.CreateRepayRequest) (model.Paym
 	orderId := fmt.Sprintf("Repayment%s-%d", fmt.Sprintf("%05d", totalBooking), random.Int())
 	desc := fmt.Sprintf("Pelunasan Booking %s", court.Name)
 
-	realCourtPrice := court.Price
-	court.Price = court.Price / 2
+	realCourtPrice := booking.Total_Payment / 2
+	court.Price = realCourtPrice / 2
 
 	newPayload = model.Payment{
 		BookingId:     payload.BookingId,

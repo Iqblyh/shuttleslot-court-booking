@@ -302,9 +302,19 @@ func (r *bookingRepository) UpdateStatus(payload model.Payment) error {
 			return err
 		}
 
-		updateBooking := "UPDATE bookings SET status = $1, updated_at = $2 WHERE id = $3"
+		updateBooking := "UPDATE bookings SET status = $1, updated_at = $2 WHERE id = $3 RETURNING customer_id"
+		var customerId string
 
-		_, err = transaction.Exec(updateBooking, "booked", time.Now(), payload.BookingId)
+		err = transaction.QueryRow(updateBooking, "booked", time.Now(), payload.BookingId).Scan(&customerId)
+
+		if err != nil {
+			transaction.Rollback()
+			return err
+		}
+
+		updatePoints := "UPDATE users SET points = 0 WHERE id = $1"
+
+		_, err = transaction.Exec(updatePoints, customerId)
 
 		if err != nil {
 			transaction.Rollback()
@@ -384,9 +394,26 @@ func (r *bookingRepository) CreateRepay(payload model.Payment) (model.Payment, e
 			return model.Payment{}, nil
 		}
 
-		updateBooking := "UPDATE bookings SET status = $1, updated_at = $2 WHERE id = $3"
+		updateBooking := "UPDATE bookings SET status = $1, updated_at = $2 WHERE id = $3 RETURNING customer_id"
+		var customerId string
 
-		_, err = transaction.Exec(updateBooking, "done", time.Now(), payload.BookingId)
+		err = transaction.QueryRow(updateBooking, "done", time.Now(), payload.BookingId).Scan(&customerId)
+		if err != nil {
+			transaction.Rollback()
+			return model.Payment{}, nil
+		}
+
+		getPoints := "SELECT points FROM users WHERE id = $1"
+		var points int
+		err = transaction.QueryRow(getPoints, customerId).Scan(&points)
+		if err != nil {
+			transaction.Rollback()
+			return model.Payment{}, nil
+		}
+
+		newPoints := points + 10
+		updatePoints := "UPDATE users SET points = $1 WHERE id = $2"
+		_, err = transaction.Exec(updatePoints, newPoints, customerId)
 		if err != nil {
 			transaction.Rollback()
 			return model.Payment{}, nil
@@ -419,9 +446,26 @@ func (r *bookingRepository) UpdateRepaymentStatus(payload model.Payment) error {
 			return err
 		}
 
-		updateBooking := "UPDATE bookings SET employee_id = $1, status = $2, updated_at = $3 WHERE id = $4"
+		updateBooking := "UPDATE bookings SET employee_id = $1, status = $2, updated_at = $3 WHERE id = $4 RETURNING customer_id"
+		var customerId string
 
-		_, err = transaction.Exec(updateBooking, payload.User.Id, "done", time.Now(), payload.BookingId)
+		err = transaction.QueryRow(updateBooking, payload.User.Id, "done", time.Now(), payload.BookingId).Scan(&customerId)
+		if err != nil {
+			transaction.Rollback()
+			return err
+		}
+
+		getPoints := "SELECT points FROM users WHERE id = $1"
+		var points int
+		err = transaction.QueryRow(getPoints, customerId).Scan(&points)
+		if err != nil {
+			transaction.Rollback()
+			return err
+		}
+
+		newPoints := points + 10
+		updatePoints := "UPDATE users SET points = $1 WHERE id = $2"
+		_, err = transaction.Exec(updatePoints, newPoints, customerId)
 		if err != nil {
 			transaction.Rollback()
 			return err
