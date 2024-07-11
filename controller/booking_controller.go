@@ -24,8 +24,15 @@ func (c *BookingController) Route() {
 	router := c.rg.Group("bookings")
 	{
 		router.POST("/", c.auth.CheckToken("admin", "employee", "customer"), c.CreateBookingHandler)
-		router.POST("/payment/notif", c.NotificationHandler)
 		router.GET("/check", c.auth.CheckToken("admin", "employee", "customer"), c.CheckBookingHandler)
+	}
+
+	midtransGroup := router.Group("/")
+	{
+		midtransGroup.POST("/payment/notif", c.NotificationHandler)
+		midtransGroup.GET("/payment/finish", c.PaymentFinishHandler)
+		midtransGroup.GET("/payment/unfinish", c.PaymentUnfinishHandler)
+		midtransGroup.GET("/payment/error", c.PaymentErrorHandler)
 	}
 
 	adminGroup := router.Group("/", c.auth.CheckToken("admin"))
@@ -258,6 +265,33 @@ func (c *BookingController) PaymentReportHandler(ctx *gin.Context) {
 	}
 
 	util.SendReportPaginateResponse(ctx, "success get data", listData, totalIncome, paginate, http.StatusOK)
+}
+
+func (c *BookingController) PaymentFinishHandler(ctx *gin.Context) {
+	data := dto.PaymentResponse{
+		OrderId:           ctx.Query("order_id"),
+		TransactionStatus: ctx.Query("transaction_status"),
+	}
+	code, _ := strconv.Atoi(ctx.Query("status_code"))
+	util.SendPaymentResponse(ctx, data, code)
+}
+
+func (c *BookingController) PaymentUnfinishHandler(ctx *gin.Context) {
+	data := dto.PaymentResponse{
+		OrderId:           ctx.Query("order_id"),
+		TransactionStatus: ctx.Query("transaction_status"),
+	}
+	code, _ := strconv.Atoi(ctx.Query("status_code"))
+	util.SendPaymentResponse(ctx, data, code)
+}
+
+func (c *BookingController) PaymentErrorHandler(ctx *gin.Context) {
+	data := dto.PaymentResponse{
+		OrderId:           ctx.Query("order_id"),
+		TransactionStatus: ctx.Query("transaction_status"),
+	}
+	code, _ := strconv.Atoi(ctx.Query("status_code"))
+	util.SendPaymentResponse(ctx, data, code)
 }
 
 func NewBookingController(bookingService service.BookingService, authMiddleware middleware.AuthMiddleware, rg *gin.RouterGroup) *BookingController {
